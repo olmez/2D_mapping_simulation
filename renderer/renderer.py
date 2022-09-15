@@ -1,10 +1,10 @@
 import pygame
-from pygame.rect import Rect
+
 
 class Renderer:
     def __init__(self):
-        self.window_size = (400, 400)
-        self.map_size = (100, 50)
+        self.window_size = (500, 500)
+        self.map_size = (100, 100)
         self.display = pygame.display.set_mode(self.window_size, 0, 32)
         self.display.fill((255, 255, 255))
 
@@ -33,7 +33,7 @@ class Renderer:
         pygame.draw.ellipse(
             self.display,
             color,
-            Rect(pos[0] - rad_x, pos[1] - rad_y, 2 * rad_x, 2 * rad_y),
+            pygame.Rect(pos[0] - rad_x, pos[1] - rad_y, 2 * rad_x, 2 * rad_y),
             thickness,
         )
 

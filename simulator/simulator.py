@@ -5,7 +5,6 @@ from Box2D import b2World, b2PolygonShape, b2Vec2, b2CircleShape
 
 from renderer.renderer import Renderer
 from robot.robot import Robot
-from utils.utils import matplotlib_rect_arg_to_Box2DPolygonShapeBox_arg
 from simulator.lidar import Lidar, LidarCallback
 from simulator.engine import Engine
 
@@ -18,22 +17,23 @@ class Simulator:
         self.robot = Robot(world=self.world)
         self.renderer = Renderer()
         self.engine = Engine(renderer=self.renderer)
+
+        self.force_input = tuple([0,0])
         
-        self.time_step = 1 / 20
+        self.time_step = 1 / 30
         self.box2d_iters = 2
 
     def user_interaction(self):
         termination = False
         up_pressed = False
         down_pressed = False
-        right_pressed = False 
+        right_pressed = False
         left_pressed = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYUP and event.key == pygame.K_ESCAPE):
                 termination = True
-
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     up_pressed = True
                 if event.key == pygame.K_DOWN:
@@ -63,14 +63,13 @@ class Simulator:
             force[0] = force[0] - 100
         if right_pressed:
             force[0] = force[0] + 100
-        
-        return force, termination
+       
+        return tuple(force), termination
 
 
     def simulate(self):
         self.engine.initialize()
-        self.robot.create_rigid_body()
-        self.robot.create_dynamic_body()
+        self.robot.create_body()
 
         while(True):
             for body in self.world.bodies:
@@ -102,11 +101,10 @@ class Simulator:
                     self.renderer.draw_line(self.lidar.miss_color, lidar_start_point, lidar_end_point)
 
             force, termination = self.user_interaction()
-
-            self.robot.move_with_force(force = force)
-
             if termination:
                 break
+
+            self.robot.move_with_force(force = force)
 
             self.world.Step(self.time_step, self.box2d_iters, self.box2d_iters)
             self.engine.flip_frame()   
