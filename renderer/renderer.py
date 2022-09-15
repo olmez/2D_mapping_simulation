@@ -1,9 +1,9 @@
 import pygame
 
 class Renderer:
-    def __init__(self, simulator_screen):
-        self.window_size = simulator_screen.window_size
-        self.map_size = simulator_screen.map_size
+    def __init__(self):
+        self.window_size = (400, 400)
+        self.map_size = (100, 50)
         self.display = pygame.display.set_mode(self.window_size, 0, 32)
         self.display.fill((0, 0, 0))
 

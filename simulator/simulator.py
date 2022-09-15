@@ -4,27 +4,34 @@ import pygame
 from Box2D import b2World, b2PolygonShape, b2Vec2, b2CircleShape
 
 from renderer.renderer import Renderer
+from robot.robot import Robot
 from utils.utils import matplotlib_rect_arg_to_Box2DPolygonShapeBox_arg
 from simulator.lidar import Lidar, LidarCallback
 from simulator.engine import Engine
 
 
 class Simulator:
-    def __init__(self, robot):
+    def __init__(self):
         self.world = b2World((0, 0), True)
-        self.engine = Engine()
-        self.lidar_sensor = Lidar()
-        self.robot = robot
+        self.lidar = Lidar()
+        self.lidar_callback = LidarCallback()
+        self.robot = Robot(world=self.world)
+        self.renderer = Renderer()
+        self.engine = Engine(renderer=self.renderer)
         
         self.time_step = 1 / 20
         self.box2d_iters = 2
 
-    def user_interaction(self, robot_pos, measurements, agent_other, agent_requests):
-        global up_pressed, down_pressed, right_pressed, left_pressed
+    def user_interaction(self):
+        termination = False
+        up_pressed = False
+        down_pressed = False
+        right_pressed = False 
+        left_pressed = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (event.type == pygame.KEYUP and event.key == pygame.K_ESCAPE):
-                agent_requests.terminate = True
+                termination = True
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
@@ -45,6 +52,7 @@ class Simulator:
                 if event.key == pygame.K_LEFT:
                     left_pressed = False
 
+        # force in X,Y
         force = [0,0]
 
         if up_pressed:
@@ -55,146 +63,55 @@ class Simulator:
             force[0] = force[0] - 100
         if right_pressed:
             force[0] = force[0] + 100
+        
+        return force, termination
 
-        self.robot.force = tuple(force)
-
-        draw_collision(robot_pos,agent_other)
 
     def simulate(self):
         self.engine.initialize()
-        t = 0
+        self.robot.create_rigid_body()
+        self.robot.create_dynamic_body()
 
+        while(True):
+            for body in self.world.bodies:
+                for fixture in body.fixtures:
+                    if type(fixture.shape) == b2PolygonShape:
+                        self.renderer.draw_polygon((255, 255, 255, 255), [body.transform * v for v in fixture.shape.vertices])
+                    elif type(fixture.shape) == b2CircleShape:
+                        self.renderer.draw_circle(self.robot.color, self.robot.get_robot_position(), fixture.shape.radius)
+
+            measurements = []
+
+            for i in range(self.lidar.num_rays):
+                self.lidar_callback.hit = None
+
+                angle = 2 * pi / self.lidar.num_rays * i
+                start_range = self.robot.radius + self.lidar.min_range
+
+                lidar_start_point = b2Vec2((start_range * cos(angle), start_range * sin(angle)))
+                lidar_end_point = self.lidar.max_range * lidar_start_point
+                lidar_start_point = lidar_start_point + self.robot.get_robot_position()
+                lidar_end_point = lidar_end_point + self.robot.get_robot_position()
+                self.world.RayCast(self.lidar_callback, lidar_start_point, lidar_end_point)
+
+                if self.lidar_callback.hit:
+                    measurements.append(((self.lidar_callback.hit), angle))
+                    lidar_hit_point = tuple(self.lidar_callback.hit)
+                    self.renderer.draw_line(self.lidar.hit_color, lidar_start_point, lidar_hit_point)
+                else:
+                    self.renderer.draw_line(self.lidar.miss_color, lidar_start_point, lidar_end_point)
+
+            force, termination = self.user_interaction()
+
+            self.robot.move_with_force(force = force)
+
+            if termination:
+                break
+
+            self.world.Step(self.time_step, self.box2d_iters, self.box2d_iters)
+            self.engine.flip_frame()   
+
+        self.terminate()
 
     def terminate(self):
         self.engine.quit()
-
-
-
-
-def simulate(settings):
-
-    world = b2World((0, 0), True)
-
-    simulator_data = SimulatorData(settings.map_data)
-    agent_requests = AgentRequests()
-
-    agent_other = AgentOther()
-    agent_other.simulator_data = simulator_data
-    agent_other.simulator_settings = settings
-
-    t = 0
-
-    if settings.rendering_on:
-        if not settings.renderer_settings:
-            settings.renderer_settings = RendererSettings()
-
-        settings.renderer_settings.map_size = settings.map_data.size
-        settings.renderer_settings.fps = 1 / settings.time_step
-
-        simulator_data.renderer = Renderer(settings.renderer_settings)
-        agent_other.renderer = simulator_data.renderer
-
-    map_width = settings.map_data.size[0]
-    map_height = settings.map_data.size[1]
-
-    obstacle = world.CreateStaticBody(
-        position=(0, 0),
-        shapes=[
-            b2PolygonShape(box=matplotlib_rect_arg_to_Box2DPolygonShapeBox_arg(*i))
-            for i in settings.map_data.obstacles
-            + [
-                ((-1.1, 0), 1, map_height),
-                ((map_width + 0.1, 0), 1, map_height),
-                ((0, -1.1), map_width, 1),
-                ((0, map_height + 0.1), map_width, 1),
-            ]
-        ],
-    )
-
-    robot = world.CreateDynamicBody(
-        position=tuple(settings.initial_pose),
-        linearDamping=settings.damping,
-        fixedRotation=True,
-    )
-
-    robot.CreateCircleFixture(
-        radius=settings.radius, density=settings.density, friction=0
-    )
-
-    lidar_callback = LidarCallback()
-
-    while True:
-
-        agent_other.contacts = world.contacts
-
-        if settings.rendering_on:
-            for body in world.bodies:
-                for fixture in body.fixtures:
-                    if type(fixture.shape) == b2PolygonShape:
-                        simulator_data.renderer.draw_polygon(
-                            (255, 255, 255, 255),
-                            [body.transform * v for v in fixture.shape.vertices],
-                        )
-                    elif type(fixture.shape) == b2CircleShape:
-                        simulator_data.renderer.draw_circle(
-                            settings.robot_color, robot.position, fixture.shape.radius
-                        )
-
-        if settings.laser_scanner_on:
-            measurements = []
-
-            for i in range(settings.laser_scanner_num_rays):
-                lidar_callback.hit = None
-
-                angle = 2 * pi / settings.laser_scanner_num_rays * i
-                start_range = settings.radius + settings.laser_scanner_min_range
-
-                point1 = b2Vec2((start_range * cos(angle), start_range * sin(angle)))
-                point2 = settings.laser_scanner_max_range * point1
-                point1 = point1 + robot.position
-                point2 = point2 + robot.position
-                world.RayCast(lidar_callback, point1, point2)
-
-                if lidar_callback.hit:
-                    measurements.append(((lidar_callback.hit), angle))
-                    if settings.rendering_on:
-                        point3 = tuple(lidar_callback.hit)
-                        simulator_data.renderer.draw_line(
-                            settings.laser_hit_color, point1, point3
-                        )
-                else:
-                    if settings.rendering_on:
-                        simulator_data.renderer.draw_line(
-                            settings.laser_miss_color, point1, point2
-                        )
-                    if settings.laser_scanner_record_misses:
-                        measurements.append((tuple(point2), angle))
-
-            if settings.record_measurements:
-                simulator_data.measurements_all.append(measurements)
-
-        if settings.record_poses:
-            simulator_data.pose_all.append(robot.position)
-
-        if settings.record_time:
-            simulator_data.t_all.append(t)
-
-        settings.agent_function(
-            robot.position, measurements, agent_other, agent_requests
-        )
-
-        if agent_requests.force:
-            robot.ApplyForce(
-                force=agent_requests.force, point=robot.position, wake=True
-            )
-        if agent_requests.velocity:
-            robot.SetLinearVelocity(agent_requests.velocity)
-        if agent_requests.terminate:
-            break
-
-        world.Step(settings.time_step, 2, settings.box2d_iters)
-
-        if settings.rendering_on:
-            simulator_data.renderer.flip_frame()
-
-    simulator_data.renderer.quit()

@@ -7,7 +7,7 @@ class Robot:
         self.radius : float = 0.0
         self.density : float = 1.0
         self.friction : float = 0.0
-        self.robot_color : (int, int, int, int) = (255, 0, 0, 255)
+        self.color : (int, int, int, int) = (255, 0, 0, 255)
         self.pose : Pose = Pose()
         
 
