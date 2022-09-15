@@ -28,7 +28,7 @@ class Robot:
 
         
     def get_robot_position(self):
-        return tuple(self.pose.x, self.pose.y)
+        return (self.pose.x, self.pose.y)
 
 
     def move_with_force(self, force):

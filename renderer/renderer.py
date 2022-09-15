@@ -1,11 +1,12 @@
 import pygame
+from pygame.rect import Rect
 
 class Renderer:
     def __init__(self):
         self.window_size = (400, 400)
         self.map_size = (100, 50)
         self.display = pygame.display.set_mode(self.window_size, 0, 32)
-        self.display.fill((0, 0, 0))
+        self.display.fill((255, 255, 255))
 
         self.screen_width = self.window_size[0]
         self.screen_height = self.window_size[1]
@@ -30,7 +31,7 @@ class Renderer:
         rad_y = round(self.scale_y * radius)
         pos = self.__convert_world_point_to_pixel_point(position)
         pygame.draw.ellipse(
-            self.screen,
+            self.display,
             color,
             Rect(pos[0] - rad_x, pos[1] - rad_y, 2 * rad_x, 2 * rad_y),
             thickness,
@@ -39,7 +40,7 @@ class Renderer:
 
     def draw_line(self, color, point1, point2, thickness=1):
         pygame.draw.line(
-            self.screen,
+            self.display,
             color,
             self.__convert_world_point_to_pixel_point(point1),
             self.__convert_world_point_to_pixel_point(point2),
@@ -49,7 +50,7 @@ class Renderer:
 
     def draw_rect(self, color, bottomleft, width, height, thickness=0):
         pygame.draw.rect(
-            self.screen,
+            self.display,
             color,
             pygame.Rect(
                 *self.__convert_world_point_to_pixel_point((bottomleft[0], bottomleft[1] + height)),
