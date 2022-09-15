@@ -7,15 +7,17 @@ from renderer.renderer import Renderer
 from robot.robot import Robot
 from simulator.lidar import Lidar, LidarCallback
 from simulator.engine import Engine
+from simulator.map import Map
 
 
 class Simulator:
     def __init__(self):
         self.world = b2World((0, 0), True)
+        self.map = Map(world=self.world)
         self.lidar = Lidar()
         self.lidar_callback = LidarCallback()
         self.robot = Robot(world=self.world)
-        self.renderer = Renderer()
+        self.renderer = Renderer(simulator_map=self.map)
         self.engine = Engine(renderer=self.renderer)
 
         self.force_input = tuple([0,0])
@@ -75,7 +77,7 @@ class Simulator:
             for body in self.world.bodies:
                 for fixture in body.fixtures:
                     if type(fixture.shape) == b2PolygonShape:
-                        self.renderer.draw_polygon((255, 255, 255, 255), [body.transform * v for v in fixture.shape.vertices])
+                        self.renderer.draw_polygon((0, 0, 0, 255), [body.transform * v for v in fixture.shape.vertices])
                     elif type(fixture.shape) == b2CircleShape:
                         self.renderer.draw_circle(self.robot.color, self.robot.get_robot_position(), fixture.shape.radius)
 
@@ -108,6 +110,7 @@ class Simulator:
 
             self.world.Step(self.time_step, self.box2d_iters, self.box2d_iters)
             self.engine.flip_frame()   
+            self.renderer.fill_map_color(self.map.color)
 
         self.terminate()
 

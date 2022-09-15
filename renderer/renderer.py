@@ -2,16 +2,19 @@ import pygame
 
 
 class Renderer:
-    def __init__(self):
+    def __init__(self, simulator_map):
         self.window_size = (500, 500)
-        self.map_size = (100, 100)
         self.display = pygame.display.set_mode(self.window_size, 0, 32)
-        self.display.fill((255, 255, 255))
-
+        self.fill_map_color(simulator_map.color)
+        
         self.screen_width = self.window_size[0]
         self.screen_height = self.window_size[1]
-        self.scale_x = self.screen_width / self.map_size[0]
-        self.scale_y = self.screen_height / self.map_size[1]
+        self.scale_x = self.screen_width / simulator_map.size[0]
+        self.scale_y = self.screen_height / simulator_map.size[1]
+
+
+    def fill_map_color(self, color):
+        self.display.fill(color)
 
 
     def __convert_world_point_to_pixel_point(self, point):

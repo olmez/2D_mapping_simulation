@@ -5,8 +5,8 @@ class Lidar:
         self.min_range : float = 0.5
         self.max_range : float = 20
         self.num_rays : float = 50
-        self.hit_color : (int, int, int, int) = (0, 255, 0, 255)
-        self.miss_color : (int, int, int, int) = (255, 0, 255, 255)
+        self.hit_color : (int, int, int, int) = (255, 0, 0, 255)
+        self.miss_color : (int, int, int, int) = (0, 200, 0, 255)
 
 
 class LidarCallback(b2RayCastCallback):
